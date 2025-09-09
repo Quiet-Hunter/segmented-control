@@ -63,22 +63,19 @@
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
     __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
   if (@available(iOS 13.0, *)) {
-    // iOS 13+: replace the system track background image so the track honors
-    // the passed color, BUT do NOT set a selected-state background image.
-    // Leaving the selected state's background image as nil allows
-    // selectedSegmentTintColor (driven by tintColor) to visually highlight
-    // the active segment.
-    [super setBackgroundColor:UIColor.clearColor];
+    // iOS 13+: Remove the system-provided overlay by supplying a transparent
+    // background image, and rely on the view's backgroundColor for the track
+    // plus selectedSegmentTintColor (from tintColor) for the selected pill.
+    [super setBackgroundColor:(backgroundColor ?: UIColor.clearColor)];
 
-    UIImage *bg = [RNCSegmentedControl rnc_imageWithColor:(backgroundColor ?: UIColor.clearColor)];
-    [self setBackgroundImage:bg forState:UIControlStateNormal barMetrics:UIBarMetricsDefault];
-
-    // Ensure no custom image masks the selected pill
-    [self setBackgroundImage:nil forState:UIControlStateSelected barMetrics:UIBarMetricsDefault];
-    [self setBackgroundImage:nil forState:UIControlStateHighlighted barMetrics:UIBarMetricsDefault];
-
-    // Optional: clear the divider so no gray hairline shows through
     UIImage *clearImg = [RNCSegmentedControl rnc_imageWithColor:UIColor.clearColor];
+
+    // Clear out Apple's background artwork for all states so our own colors show
+    [self setBackgroundImage:clearImg forState:UIControlStateNormal    barMetrics:UIBarMetricsDefault];
+    [self setBackgroundImage:clearImg forState:UIControlStateSelected  barMetrics:UIBarMetricsDefault];
+    [self setBackgroundImage:clearImg forState:UIControlStateHighlighted barMetrics:UIBarMetricsDefault];
+
+    // Hide the gray divider
     [self setDividerImage:clearImg
      forLeftSegmentState:UIControlStateNormal
      rightSegmentState:UIControlStateNormal
@@ -91,12 +88,29 @@
 }
 
 - (void)setTintColor:(UIColor *)tintColor {
+  // Keep UIView's tintColor updated (affects title color in some styles)
   [super setTintColor:tintColor];
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) &&      \
     __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
   if (@available(iOS 13.0, *)) {
-    // On iOS 13+, selected segment fill is controlled by selectedSegmentTintColor.
-    [self setSelectedSegmentTintColor:tintColor];
+    // Explicitly drive the iOS 13+ "pill" with selectedSegmentTintColor
+    self.selectedSegmentTintColor = tintColor;
+
+    // If the app provided no activeFontStyle, ensure selected text contrasts.
+    // (Do not override if dev sets activeFontStyle via JS)
+    NSDictionary *currentSelectedAttrs = [self titleTextAttributesForState:UIControlStateSelected];
+    if (!currentSelectedAttrs[NSForegroundColorAttributeName]) {
+      UIColor *selectedTextColor = UIColor.whiteColor;
+      // Pick white text for dark-ish tints, else use label color
+      CGFloat r,g,b,a; [tintColor getRed:&r green:&g blue:&b alpha:&a];
+      CGFloat luminance = 0.2126*r + 0.7152*g + 0.0722*b;
+      if (luminance > 0.75) { // very light tint -> use label color
+        selectedTextColor = UIColor.labelColor;
+      }
+      NSMutableDictionary *selAttrs = [NSMutableDictionary dictionaryWithDictionary:currentSelectedAttrs ?: @{}];
+      selAttrs[NSForegroundColorAttributeName] = selectedTextColor;
+      [self setTitleTextAttributes:selAttrs forState:UIControlStateSelected];
+    }
   }
 #endif
 }

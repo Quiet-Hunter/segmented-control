@@ -24,20 +24,20 @@
 }
 
 - (void)setValues:(NSArray *)values {
-	[self removeAllSegments];
-	for (id segment in values) {
-		if ([segment isKindOfClass:[NSMutableDictionary class]]){
-			UIImage *image = [[RCTConvert UIImage:segment] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-			[self insertSegmentWithImage:image
-								 atIndex:self.numberOfSegments
-								animated:NO];
-		} else {
-			[self insertSegmentWithTitle:(NSString *)segment
-								 atIndex:self.numberOfSegments
-								animated:NO];
-		}
-	}
-	super.selectedSegmentIndex = _selectedIndex;
+  [self removeAllSegments];
+  for (id segment in values) {
+    if ([segment isKindOfClass:[NSMutableDictionary class]]){
+      UIImage *image = [[RCTConvert UIImage:segment] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+      [self insertSegmentWithImage:image
+                           atIndex:self.numberOfSegments
+                          animated:NO];
+    } else {
+      [self insertSegmentWithTitle:(NSString *)segment
+                           atIndex:self.numberOfSegments
+                          animated:NO];
+    }
+  }
+  super.selectedSegmentIndex = _selectedIndex;
 }
 
 - (void)setSelectedIndex:(NSInteger)selectedIndex {
@@ -63,14 +63,19 @@
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
     __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
   if (@available(iOS 13.0, *)) {
-    // On iOS 13+, UISegmentedControl draws a system background image that
-    // covers the view's backgroundColor. To actually tint the "track", we must
-    // set background images per state (and optionally clear the divider).
+    // iOS 13+: replace the system track background image so the track honors
+    // the passed color, BUT do NOT set a selected-state background image.
+    // Leaving the selected state's background image as nil allows
+    // selectedSegmentTintColor (driven by tintColor) to visually highlight
+    // the active segment.
     [super setBackgroundColor:UIColor.clearColor];
 
     UIImage *bg = [RNCSegmentedControl rnc_imageWithColor:(backgroundColor ?: UIColor.clearColor)];
-    [self setBackgroundImage:bg forState:UIControlStateNormal   barMetrics:UIBarMetricsDefault];
-    [self setBackgroundImage:bg forState:UIControlStateSelected barMetrics:UIBarMetricsDefault];
+    [self setBackgroundImage:bg forState:UIControlStateNormal barMetrics:UIBarMetricsDefault];
+
+    // Ensure no custom image masks the selected pill
+    [self setBackgroundImage:nil forState:UIControlStateSelected barMetrics:UIBarMetricsDefault];
+    [self setBackgroundImage:nil forState:UIControlStateHighlighted barMetrics:UIBarMetricsDefault];
 
     // Optional: clear the divider so no gray hairline shows through
     UIImage *clearImg = [RNCSegmentedControl rnc_imageWithColor:UIColor.clearColor];

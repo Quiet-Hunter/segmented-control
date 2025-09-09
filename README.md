@@ -294,3 +294,8 @@ The library is released under the MIT licence. For more information see [`LICENS
 [lean-core-badge]: https://img.shields.io/badge/Lean%20Core-Extracted-brightgreen.svg?style=flat-square
 [lean-core-issue]: https://github.com/facebook/react-native/issues/23313
 [support-badge]: https://img.shields.io/badge/platforms-android%20|%20ios%20|%20web-lightgrey.svg?style=flat-square
+
+### iOS 13+ note on `backgroundColor`
+
+Starting with iOS 13, `UISegmentedControl` draws a system background image above the view background. To ensure the `backgroundColor` prop actually changes the control’s track color on iOS, this library (from this commit) sets a solid background **image** under the hood for the normal and selected states (and clears the divider). This mirrors Apple’s guidance and makes `backgroundColor` behave as expected in both light and dark modes.
+

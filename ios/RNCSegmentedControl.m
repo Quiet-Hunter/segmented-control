@@ -45,13 +45,44 @@
   super.selectedSegmentIndex = selectedIndex;
 }
 
+/**
+ * Helper: create a 1x1 resizable image from a UIColor.
+ */
++ (UIImage *)rnc_imageWithColor:(UIColor *)color
+{
+  CGRect rect = CGRectMake(0, 0, 1, 1);
+  UIGraphicsBeginImageContextWithOptions(rect.size, NO, 0.0);
+  [(color ?: UIColor.clearColor) setFill];
+  UIRectFill(rect);
+  UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
+  UIGraphicsEndImageContext();
+  return [img resizableImageWithCapInsets:UIEdgeInsetsZero];
+}
+
 - (void)setBackgroundColor:(UIColor *)backgroundColor {
-#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) &&      \
+#if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) && \
     __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
   if (@available(iOS 13.0, *)) {
-    [super setBackgroundColor:backgroundColor];
+    // On iOS 13+, UISegmentedControl draws a system background image that
+    // covers the view's backgroundColor. To actually tint the "track", we must
+    // set background images per state (and optionally clear the divider).
+    [super setBackgroundColor:UIColor.clearColor];
+
+    UIImage *bg = [RNCSegmentedControl rnc_imageWithColor:(backgroundColor ?: UIColor.clearColor)];
+    [self setBackgroundImage:bg forState:UIControlStateNormal   barMetrics:UIBarMetricsDefault];
+    [self setBackgroundImage:bg forState:UIControlStateSelected barMetrics:UIBarMetricsDefault];
+
+    // Optional: clear the divider so no gray hairline shows through
+    UIImage *clearImg = [RNCSegmentedControl rnc_imageWithColor:UIColor.clearColor];
+    [self setDividerImage:clearImg
+     forLeftSegmentState:UIControlStateNormal
+     rightSegmentState:UIControlStateNormal
+     barMetrics:UIBarMetricsDefault];
+    return;
   }
 #endif
+  // < iOS 13 fallback
+  [super setBackgroundColor:backgroundColor];
 }
 
 - (void)setTintColor:(UIColor *)tintColor {
@@ -59,6 +90,7 @@
 #if defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && defined(__IPHONE_13_0) &&      \
     __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_13_0
   if (@available(iOS 13.0, *)) {
+    // On iOS 13+, selected segment fill is controlled by selectedSegmentTintColor.
     [self setSelectedSegmentTintColor:tintColor];
   }
 #endif
@@ -67,9 +99,9 @@
 - (void)didChange {
   _selectedIndex = self.selectedSegmentIndex;
   if (_onChange) {
-	  NSString *segmentTitle = [self titleForSegmentAtIndex:_selectedIndex];
+    NSString *segmentTitle = [self titleForSegmentAtIndex:_selectedIndex];
     _onChange(@{
-		@"value" : (segmentTitle) ? segmentTitle : [self imageForSegmentAtIndex:_selectedIndex],
+      @"value" : (segmentTitle) ? segmentTitle : [self imageForSegmentAtIndex:_selectedIndex],
       @"selectedSegmentIndex" : @(_selectedIndex)
     });
   }
@@ -92,7 +124,7 @@
   NSArray *elements = [super accessibilityElements];
   [elements enumerateObjectsUsingBlock:^(UIView *obj, NSUInteger idx, BOOL *stop) {
     @try {
-      obj.accessibilityIdentifier = self.testIDS[idx];      
+      obj.accessibilityIdentifier = self.testIDS[idx];
     } @catch (NSException *exception) {
       NSLog(@"%@", exception);
     }
